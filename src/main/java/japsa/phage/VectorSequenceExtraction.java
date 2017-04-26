@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
+import java.util.concurrent.SubmissionPublisher;
 
 
 import htsjdk.samtools.SAMRecord;
@@ -59,24 +60,26 @@ public class VectorSequenceExtraction {
 
     private static final Logger LOG = LoggerFactory.getLogger(VectorSequenceExtraction.class);
 
-    static final int FLANKING=100;
-    boolean trim=false;
+    SubmissionPublisher<Sequence> insertPublisher;
+
+    int minimum;
+    int flanking;
     //Sequence plasmid;
     String plasmidFile; //plasmid fasta/q file that are already indexed by bwa
     int s5, e5,
             s3, e3;
     String bwaExe = "bwa";
-
     Process bwaProcess = null;
 
-    public VectorSequenceExtraction(String seqFile, String bwaExe, boolean trim, int e5, int s3) throws IOException{
+    public VectorSequenceExtraction(String seqFile, SubmissionPublisher<Sequence> publisher, int e5, int s3, int flank, int minimum) throws IOException{
         plasmidFile=seqFile;
+        this.flanking = flanking;
+        this.minimum = minimum;
         this.e5=e5;
-        this.s5=this.e5-FLANKING;
+        this.s5=this.e5 - this.flanking;
         this.s3=s3;
-        this.e3=this.s3+FLANKING;
-        this.bwaExe = bwaExe;
-        this.trim = trim;
+        this.e3=this.s3 + this.flanking;
+        this.insertPublisher = publisher;
 
         SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
     }
@@ -151,12 +154,11 @@ public class VectorSequenceExtraction {
         String currentReadName = "";
 
         SequenceOutputStream outFile = SequenceOutputStream.makeOutputStream(output);
-        int count=0;
-        SAMRecord currentRecord= null, prevRecord = null;
+        SAMRecord currentRecord= null;
 
         boolean extracted = false;
         boolean firstDirection = false;
-        int startNeg = 0,  endNeg = 0, startPos = 0, endPos = 0;
+        int startInsertPosition = 0,  endInsertPosition = 0;
         String sequenceStr = "";
         while (iter.hasNext()) {
             currentRecord = iter.next();
@@ -165,17 +167,18 @@ public class VectorSequenceExtraction {
                 continue;
             if (currentRecord.getMappingQuality() <= qual)
                 continue;
-            count++;
+            //count++;
 
             String currentRecordName = currentRecord.getReadName();
 
             if (!currentReadName.equals(currentRecordName)) {
                 //start of a new record
                 extracted = false;
-                startNeg = endNeg = startPos = endPos = 0;
+                startInsertPosition = endInsertPosition = 0;
                 currentReadName = currentRecordName;
                 firstDirection = currentRecord.getReadNegativeStrandFlag();
                 sequenceStr = currentRecord.getReadString();
+
             }else if (extracted){
                 continue;//I have extracted from this read
             }else if (firstDirection != currentRecord.getReadNegativeStrandFlag()) {
@@ -190,7 +193,7 @@ public class VectorSequenceExtraction {
                 int[] pos = HTSUtilities.positionsInRead(currentRecord, refP5);
                 //if(pos[0] > s5*0.8 && pos[0] < s5*1.2){
                 if (pos[0] > 0) {
-                    startNeg = pos[0];
+                    startInsertPosition = pos[0];
                 }
             }
 
@@ -199,29 +202,31 @@ public class VectorSequenceExtraction {
                 int[] pos = HTSUtilities.positionsInRead(currentRecord, refP3);
                 //if(pos[0] > s5*0.8 && pos[0] < s5*1.2){
                 if (pos[1] > 0) {
-                    endNeg = pos[1];
+                    endInsertPosition = pos[1];
                 }
             }
 
             //Check if both startNeg and endNeg were anchored
-            if (endNeg > 0 && startNeg > 0) {
-                if (endNeg < startNeg) {
-                    LOG.warn("Read " + currentReadName + ": find end (" + endNeg + ") < start (" + startNeg + ") of " + firstDirection);
+            if (endInsertPosition > 0 && startInsertPosition > 0) {
+                if (endInsertPosition < startInsertPosition) {
+                    LOG.warn("Read " + currentReadName + ": find end (" + endInsertPosition + ") < start (" + startInsertPosition + ") of " + firstDirection);
                     continue;
                 }
 
-                if (endNeg > sequenceStr.length()) {
-                    LOG.warn("Read " + currentReadName + ": find end (" + endNeg + ") > length (" + sequenceStr.length() + ")");
+                if (endInsertPosition > sequenceStr.length()) {
+                    LOG.warn("Read " + currentReadName + ": find end (" + endInsertPosition + ") > length (" + sequenceStr.length() + ")");
                     continue;
                 }
-
-                String readSub = sequenceStr.substring(startNeg,endNeg);
-                Sequence rs = new Sequence(Alphabet.DNA16(), readSub, currentReadName);
-                rs.writeFasta(outFile);
-                process(rs);
 
                 extracted = true;
-                //TODO: yay
+                if (endInsertPosition - startInsertPosition > minimum && endInsertPosition - startInsertPosition < minimum + 120) {
+                    String readSub = sequenceStr.substring(startInsertPosition, endInsertPosition);
+                    Sequence rs = new Sequence(Alphabet.DNA16(), readSub, currentReadName);
+                    //rs.setName(rs.getName() + "_start=" + startInsertPosition + ";end=" + endInsertPosition + ";direction=" + firstDirection);
+                    rs.writeFasta(outFile);
+                    //process(rs);
+                    insertPublisher.submit(rs);
+                }
             }
         }
         iter.close();

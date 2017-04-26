@@ -15,6 +15,11 @@ import java.util.concurrent.SubmissionPublisher;
 /**
  * Created by minhduc on 22/04/17.
  */
+
+@Deployable(
+        scriptName = "phageXpress.sh",
+        scriptDesc = "Run phageXpress pipeline"
+)
 public class PhageXpressCmd extends CommandLine {
     private static final Logger LOG = LoggerFactory.getLogger(PhageXpressCmd.class);
     public PhageXpressCmd(){
@@ -30,8 +35,9 @@ public class PhageXpressCmd extends CommandLine {
         addString("plasmid", null, "Name of a sample plasmid file in FASTA format", true);
         addString("output", "out.fasta", "Name of the output file, - for standard input");
 
-        addString("bwaExe", "bwa", "Path to BWA mem.");
-
+        //addString("bwaExe", "bwa", "Path to BWA mem.");
+        addDouble("threshold", 0.85, "Threshold identity");
+        addString("prefix", null, "prefix");
         addBoolean("pure", false, "Use this option to get rid of flanking regions on both ends.");
         addStdHelp();
     }
@@ -46,21 +52,35 @@ public class PhageXpressCmd extends CommandLine {
         String 	input = cmdLine.getStringVal("input"),
                 format = cmdLine.getStringVal("format"),
                 plasmid = cmdLine.getStringVal("plasmid"),
-                bwaExe = cmdLine.getStringVal("bwaExe"),
+          //      bwaExe = cmdLine.getStringVal("bwaExe"),
                 output = cmdLine.getStringVal("output");
-        boolean pure = cmdLine.getBooleanVal("pure");
+        String prefix = cmdLine.getStringVal("prefix");
+        if (prefix == null)
+            prefix = System.currentTimeMillis() + "";
+
+        double thresholdOption = cmdLine.getDoubleVal("threshold");
+
+
+        //boolean pure = cmdLine.getBooleanVal("pure");
         try {
-            //VectorSequenceExtraction vectorSequenceExtraction = new VectorSequenceExtraction(plasmid, "bwa",pure, 1658, 2735);
-            VectorSequenceExtraction vectorSequenceExtraction = new VectorSequenceExtraction(plasmid, "bwa",pure, 1711, 2624);
-            vectorSequenceExtraction.extractInsertSequence(input,0, format, 4,output);
-            //Allocate: 2 CPUs for bwa, 2CPUS for bwa
-
-            ExecutorService executor = Executors.newFixedThreadPool(8);
+            int batchSize = 512;
+            ExecutorService executor = Executors.newFixedThreadPool(6);
             //Create Publisher to submit insertSequence
-            SubmissionPublisher<Sequence> insertPublisher = new SubmissionPublisher<>(executor,256 );
+            SubmissionPublisher<Sequence> insertPublisher = new SubmissionPublisher<>(executor,batchSize*2 );
+            InsertSubscriber subcriber = new InsertSubscriber("subscriber",  batchSize);
+            insertPublisher.subscribe(subcriber);
 
 
+            //Create a subcriber
 
+            //VectorSequenceExtraction vectorSequenceExtraction = new VectorSequenceExtraction(plasmid, "bwa",pure, 1658, 2735);
+            //The actual insert (the variation part) is around 1820-2520, and I take around 120 bp + 100 flank
+            //So around 450 bp was added
+            //The minimum is 650
+            VectorSequenceExtraction vectorSequenceExtraction = new VectorSequenceExtraction(plasmid, insertPublisher, 1711, 2624,100, 800);
+            vectorSequenceExtraction.extractInsertSequence(input,0, format, 4,output);
+            insertPublisher.close();
+            //Allocate: 2 CPUs for bwa, 2CPUS for bwa
 
             executor.shutdown();
         } catch (Exception e1) {
