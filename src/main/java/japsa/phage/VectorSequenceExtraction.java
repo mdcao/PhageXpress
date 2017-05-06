@@ -88,7 +88,7 @@ public class VectorSequenceExtraction {
     private SamReader getSamStream(String inFile, String format, int bwaThread) throws IOException, InterruptedException{
         SamReader reader = null;
 
-        if (format.endsWith("am")){//bam or sam
+        if (format.toLowerCase().endsWith("am")){//bam or sam
             if ("-".equals(inFile))
                 reader = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
             else

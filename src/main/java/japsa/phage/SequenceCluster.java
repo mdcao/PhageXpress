@@ -1,8 +1,11 @@
 package japsa.phage;
 
+import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -14,8 +17,11 @@ import java.util.*;
  * Created by minhduc on 25/04/17.
  */
 public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> {
+    private static final Logger LOG = LoggerFactory.getLogger(SequenceCluster.class);
+
+
     static int COUNT = 0;
-    static double ratio = 0.82;
+    static double ratio = 0.9;
     static String prefix = "_" + new Date().getTime();
 
     public SequenceCluster(){
@@ -24,8 +30,10 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
 
     //Cluster a brand new set
     public static SequenceCluster cluster(SequenceCluster oldCluster, Map<String, Sequence> seqs){
+        LOG.info("Starting clustering with " + (oldCluster ==null?0:oldCluster.size()) + " clusters and " + seqs.size() + " sequences");
         SequenceCluster clusters = new SequenceCluster();
         try {
+            //If the existing cluster has some sequences, concatenate that to the list of seqs
             if (oldCluster  != null) {
                 for (ReadGroup group : oldCluster.values()) {
                     Sequence seq = group.representative();
@@ -35,7 +43,6 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
             }
 
             //implementation using cdhit
-
             SequenceOutputStream sos = SequenceOutputStream.makeOutputStream(prefix + ".fas");
 
             for (Sequence seq:seqs.values()){
@@ -45,10 +52,10 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
             ProcessBuilder pb = new ProcessBuilder("cd-hit-est",
                     "-i", prefix + ".fas",
                     "-o", prefix + "_cluster",
-                    "-c", "0.8",
+                    "-c", ""+ratio,
                     "-n", "6",
                     "-T", "2",
-//                    "-g", "1",
+                    "-g", "1",
                     "-aL", "0.9",
                     "-aS", "0.9",
                     "-r","0",
@@ -63,6 +70,8 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
 
             ReadGroup readGroup = null;
 
+            ArrayList<Sequence> seqList = new ArrayList<Sequence>();
+
             String groupID = "";
             int groupCount = 0;
             while ( (line = reader.readLine())!= null){
@@ -73,7 +82,22 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
                             COUNT ++;
                             groupID = COUNT + "_";
                         }
+
                         readGroup.ID = groupID;
+
+                        Sequence repSequence;
+                        if (seqList.size() == 1)
+                                repSequence = seqList.get(0);
+                        else{
+                            LOG.info("Run concenssus on " + seqList.size() + " sequences");
+                            repSequence = ErrorCorrection.consensusSequence(seqList,"tmp","poa");
+                        }
+                        seqList.clear();
+
+                        repSequence.setName(groupID);
+                        repSequence.setDesc(readGroup.count + " reads");
+                        readGroup.repSequence = repSequence;
+
                         clusters.put(groupID, readGroup);
                     }
                     //start a new one
@@ -104,11 +128,13 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
                     System.exit(0);
                 }
 
-                if (toks[3].equals("*")) {
-                    readGroup.repSequence = seqs.get(name);
-                    readGroup.repSequence.setName(actualName);
-                }
-            }
+                //if (toks[3].equals("*")) {
+                //   readGroup.repSequence = seqs.get(name);
+                //  readGroup.repSequence.setName(actualName);
+                //}
+
+                seqList.add(seqs.get(name));
+            }//while
 
             if (readGroup != null){
                 if (groupID.length() == 0) {
@@ -116,6 +142,17 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
                     groupID = COUNT + "_";
                 }
                 readGroup.ID = groupID;
+
+                Sequence repSequence = (seqList.size() == 1)?
+                        seqList.get(0)
+                        :
+                        ErrorCorrection.consensusSequence(seqList,"tmp","kalign");
+                seqList.clear();
+
+                repSequence.setName(groupID);
+                readGroup.repSequence = repSequence;
+
+
                 clusters.put(groupID, readGroup);
             }
             /////
@@ -127,9 +164,8 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
             e.printStackTrace();
         }
 
+        LOG.info("Ending clustering with " + (clusters.size()) + " clusters ");
         return clusters;
-
-
     }
 
     public static class ReadGroup {

@@ -21,7 +21,12 @@ import java.util.concurrent.SubmissionPublisher;
         scriptDesc = "Run phageXpress pipeline"
 )
 public class PhageXpressCmd extends CommandLine {
+    static {
+        System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "TRACE");
+        //System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "trace");
+    }
     private static final Logger LOG = LoggerFactory.getLogger(PhageXpressCmd.class);
+
     public PhageXpressCmd(){
 
 
@@ -36,7 +41,8 @@ public class PhageXpressCmd extends CommandLine {
         addString("output", "out.fasta", "Name of the output file, - for standard input");
 
         //addString("bwaExe", "bwa", "Path to BWA mem.");
-        addDouble("threshold", 0.85, "Threshold identity");
+        addInt("batchSize", 512, "Batch size");
+        addDouble("threshold", 0.90, "Threshold identity");
         addString("prefix", null, "prefix");
         addBoolean("pure", false, "Use this option to get rid of flanking regions on both ends.");
         addStdHelp();
@@ -59,11 +65,13 @@ public class PhageXpressCmd extends CommandLine {
             prefix = System.currentTimeMillis() + "";
 
         double thresholdOption = cmdLine.getDoubleVal("threshold");
+        int 	batchSize = cmdLine.getIntVal("batchSize");
+        SequenceCluster.ratio = thresholdOption;
 
+        //System.out.println(Logger.ROOT_LOGGER_NAME);
 
         //boolean pure = cmdLine.getBooleanVal("pure");
         try {
-            int batchSize = 512;
             ExecutorService executor = Executors.newFixedThreadPool(6);
             //Create Publisher to submit insertSequence
             SubmissionPublisher<Sequence> insertPublisher = new SubmissionPublisher<>(executor,batchSize*2 );

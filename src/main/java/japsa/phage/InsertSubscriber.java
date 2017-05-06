@@ -1,9 +1,11 @@
 package japsa.phage;
 
 import japsa.seq.Sequence;
+import japsa.seq.SequenceOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Flow;
 
@@ -14,9 +16,6 @@ import static java.lang.Thread.currentThread;
  */
 public class InsertSubscriber implements Flow.Subscriber<Sequence> {
     private static final Logger LOG = LoggerFactory.getLogger(InsertSubscriber.class);
-    static {
-        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "trace");
-    }
 
     String name;
 
@@ -28,37 +27,41 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
     Map<String, Sequence> currentBatch = new HashMap<String, Sequence>();
     SequenceCluster myCluster = null;
 
-    public InsertSubscriber(String name, int batchSize ){
+    SequenceOutputStream outputStream;
+
+    public InsertSubscriber(String name, int batchSize ) throws IOException {
         super();
-        LOG.trace(currentThread().getName() + "(" + name + ") Created" );
+        LOG.info(currentThread().getName() + "(" + name + ") Created" );
         this.name = name;
         this.batchSize = batchSize;
+        outputStream = SequenceOutputStream.makeOutputStream("sequenceResults.fasta");
     }
 
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         this.subscription = subscription;
-        LOG.trace(currentThread().getName() + "(" + name + ") subscribed");
+        LOG.info(currentThread().getName() + "(" + name + ") subscribed");
         subscription.request(batchSize);
     }
 
     @Override
     public void onNext(Sequence seq) {
-        //LOG.trace(currentThread().getName() + "(" + name + ") Got : " + seq.getName());
+        //LOG.info(currentThread().getName() + "(" + name + ") Got : " + seq.getName());
         currentBatch.put(seq.getName(), seq);
         actualInsert ++;
-
-
         //process here
         if (currentBatch.size() >= batchSize){
             subscription.request(batchSize);
-            LOG.trace("Receive another batch");
-            addNewBatch();
+            LOG.info("Receive another batch");
+            try {
+                addNewBatch();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-
     }
 
-    private void addNewBatch(){
+    private void addNewBatch() throws IOException {
         myCluster = myCluster = SequenceCluster.cluster(myCluster, currentBatch);
         ArrayList<SequenceCluster.ReadGroup> groupList = new ArrayList<SequenceCluster.ReadGroup>();
         for (SequenceCluster.ReadGroup g: myCluster.values())
@@ -71,9 +74,13 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
             }
         });
 
-        System.out.println(new Date() + " " + actualInsert);
+        //System.out.println(new Date() + " " + actualInsert);
+        outputStream.print("##" + new Date() + " " + actualInsert);
+        outputStream.println();
         for (int x = 0; x < groupList.size() && x < 40;x++){
-            System.out.println(groupList.get(x).count + "\t" + groupList.get(x).getID() + "\t" +  groupList.get(x).repSequence.getName());
+            groupList.get(x).repSequence.writeFasta(outputStream);
+            //System.out.println(groupList.get(x).count + "\t" + groupList.get(x).getID() + "\t" +  groupList.get(x).repSequence.getName());
+
         }
         //reset count
         currentBatch.clear();
@@ -88,10 +95,14 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
     @Override
     public void onComplete() {
         if (currentBatch.size() > 0){
-            LOG.trace("Receive final batch of " + currentBatch.size());
-            addNewBatch();
+            LOG.info("Receive final batch of " + currentBatch.size());
+            try {
+                addNewBatch();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        LOG.trace(currentThread().getName() + "(" + name + ") Done");
+        LOG.info(currentThread().getName() + "(" + name + ") Done");
 
     }
 
