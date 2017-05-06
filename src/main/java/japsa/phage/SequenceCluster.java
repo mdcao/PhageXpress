@@ -51,7 +51,7 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
             sos.close();
             ProcessBuilder pb = new ProcessBuilder("cd-hit-est",
                     "-i", prefix + "_cdhit.fas",
-                    "-o", prefix + "_cdhit.cluster",
+                    "-o", prefix + "_cdhit",
                     "-c", ""+ratio,
                     "-n", "6",
                     "-T", "2",
@@ -65,7 +65,7 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
             Process process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
             process.waitFor();
 
-            BufferedReader reader = SequenceReader.openFile(prefix + "_cdhit.cluster");
+            BufferedReader reader = SequenceReader.openFile(prefix + "_cdhit.clstr");
             String line = "";
 
             ReadGroup readGroup = null;
