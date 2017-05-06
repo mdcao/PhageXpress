@@ -42,17 +42,16 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
         subscription.request(batchSize);
     }
 
-
-
     @Override
     public void onNext(Sequence seq) {
         //LOG.trace(currentThread().getName() + "(" + name + ") Got : " + seq.getName());
         currentBatch.put(seq.getName(), seq);
         actualInsert ++;
 
-        subscription.request(batchSize);
+
         //process here
         if (currentBatch.size() >= batchSize){
+            subscription.request(batchSize);
             LOG.trace("Receive another batch");
             addNewBatch();
         }
