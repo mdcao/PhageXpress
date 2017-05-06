@@ -43,7 +43,7 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
             }
 
             //implementation using cdhit
-            SequenceOutputStream sos = SequenceOutputStream.makeOutputStream(prefix + ".fas");
+            SequenceOutputStream sos = SequenceOutputStream.makeOutputStream(prefix + "_cdhit.fas");
 
             for (Sequence seq:seqs.values()){
                 seq.writeFasta(sos);
