@@ -62,11 +62,13 @@ public class PhageXpressCmd extends CommandLine {
                 output = cmdLine.getStringVal("output");
         String prefix = cmdLine.getStringVal("prefix");
         if (prefix == null)
-            prefix = System.currentTimeMillis() + "";
+            prefix = "tmp_" + System.currentTimeMillis();
 
         double thresholdOption = cmdLine.getDoubleVal("threshold");
         int 	batchSize = cmdLine.getIntVal("batchSize");
         SequenceCluster.ratio = thresholdOption;
+        SequenceCluster.prefix = prefix;
+
 
         //System.out.println(Logger.ROOT_LOGGER_NAME);
 
@@ -75,7 +77,7 @@ public class PhageXpressCmd extends CommandLine {
             ExecutorService executor = Executors.newFixedThreadPool(6);
             //Create Publisher to submit insertSequence
             SubmissionPublisher<Sequence> insertPublisher = new SubmissionPublisher<>(executor,batchSize*2 );
-            InsertSubscriber subcriber = new InsertSubscriber("subscriber",  batchSize);
+            InsertSubscriber subcriber = new InsertSubscriber("subscriber",  batchSize, output);
             insertPublisher.subscribe(subcriber);
 
 
@@ -86,7 +88,7 @@ public class PhageXpressCmd extends CommandLine {
             //So around 450 bp was added
             //The minimum is 650
             VectorSequenceExtraction vectorSequenceExtraction = new VectorSequenceExtraction(plasmid, insertPublisher, 1711, 2624,100, 800);
-            vectorSequenceExtraction.extractInsertSequence(input,0, format, 4,output);
+            vectorSequenceExtraction.extractInsertSequence(input,0, format, 4, output);
             insertPublisher.close();
             //Allocate: 2 CPUs for bwa, 2CPUS for bwa
 

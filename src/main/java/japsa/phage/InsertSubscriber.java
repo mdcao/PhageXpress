@@ -29,12 +29,12 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
 
     SequenceOutputStream outputStream;
 
-    public InsertSubscriber(String name, int batchSize ) throws IOException {
+    public InsertSubscriber(String name, int batchSize, String output ) throws IOException {
         super();
         LOG.info(currentThread().getName() + "(" + name + ") Created" );
         this.name = name;
         this.batchSize = batchSize;
-        outputStream = SequenceOutputStream.makeOutputStream("sequenceResults.fasta");
+        outputStream = SequenceOutputStream.makeOutputStream("cluster_" + output);
     }
 
     @Override

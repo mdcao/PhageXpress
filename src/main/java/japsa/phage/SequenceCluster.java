@@ -50,8 +50,8 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
             }
             sos.close();
             ProcessBuilder pb = new ProcessBuilder("cd-hit-est",
-                    "-i", prefix + ".fas",
-                    "-o", prefix + "_cluster",
+                    "-i", prefix + "_cdhit.fas",
+                    "-o", prefix + "_cdhit.cluster",
                     "-c", ""+ratio,
                     "-n", "6",
                     "-T", "2",
@@ -65,7 +65,7 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
             Process process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
             process.waitFor();
 
-            BufferedReader reader = SequenceReader.openFile(prefix + "_cluster.clstr");
+            BufferedReader reader = SequenceReader.openFile(prefix + "_cdhit.cluster");
             String line = "";
 
             ReadGroup readGroup = null;
@@ -90,7 +90,7 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
                                 repSequence = seqList.get(0);
                         else{
                             LOG.info("Run concenssus on " + seqList.size() + " sequences");
-                            repSequence = ErrorCorrection.consensusSequence(seqList,"tmp","poa");
+                            repSequence = ErrorCorrection.consensusSequence(seqList,prefix,"poa");
                         }
                         seqList.clear();
 
@@ -146,7 +146,7 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
                 Sequence repSequence = (seqList.size() == 1)?
                         seqList.get(0)
                         :
-                        ErrorCorrection.consensusSequence(seqList,"tmp","kalign");
+                        ErrorCorrection.consensusSequence(seqList,prefix,"poa");
                 seqList.clear();
 
                 repSequence.setName(groupID);
