@@ -22,6 +22,7 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
     private Flow.Subscription subscription;
     private int batchSize = 128;
     int actualInsert = 0;
+    int minReadRequire = 5;
 
     //temporary list
     Map<String, Sequence> currentBatch = new HashMap<String, Sequence>();
@@ -79,7 +80,7 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
         outputStream.println();
         for (int x = 0; x < groupList.size();x++){
             SequenceCluster.ReadGroup group = groupList.get(x);
-            if (group.count >= 10)
+            if (group.count >= minReadRequire)
                 groupList.get(x).repSequence.writeFasta(outputStream);
             else
                 break;
