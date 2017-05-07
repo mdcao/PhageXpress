@@ -45,6 +45,7 @@ public class PhageXpressCmd extends CommandLine {
         addDouble("threshold", 0.90, "Threshold identity");
         addString("prefix", null, "prefix");
         addBoolean("pure", false, "Use this option to get rid of flanking regions on both ends.");
+        addInt("thread", 8, "Number of threads to use, not including those for bwa");
         addStdHelp();
     }
 
@@ -66,6 +67,7 @@ public class PhageXpressCmd extends CommandLine {
 
         double thresholdOption = cmdLine.getDoubleVal("threshold");
         int 	batchSize = cmdLine.getIntVal("batchSize");
+        int 	thread = cmdLine.getIntVal("thread");
         SequenceCluster.ratio = thresholdOption;
         SequenceCluster.prefix = prefix;
 
@@ -74,7 +76,10 @@ public class PhageXpressCmd extends CommandLine {
 
         //boolean pure = cmdLine.getBooleanVal("pure");
         try {
-            ExecutorService executor = Executors.newFixedThreadPool(6);
+            ExecutorService executor = Executors.newFixedThreadPool(thread);
+            SequenceCluster.executor = executor;
+            SequenceCluster.total_thread = thread;
+
             //Create Publisher to submit insertSequence
             SubmissionPublisher<Sequence> insertPublisher = new SubmissionPublisher<>(executor,batchSize*2 );
             InsertSubscriber subcriber = new InsertSubscriber("subscriber",  batchSize, output);

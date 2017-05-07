@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 
 
@@ -95,7 +96,8 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
                                 repSequence = seqList.get(0);
                         else{
                             LOG.info("Run concensus on " + seqList.size() + " sequences");
-                            repSequence = ErrorCorrection.consensusSequence(seqList,prefix,"poa");
+
+                            repSequence = ErrorCorrection.consensusSequence(seqList, 50, prefix,"poa");
                         }
                         seqList.clear();
 
@@ -148,10 +150,11 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
                 }
                 readGroup.ID = groupID;
 
+                //TODO: How to submit these consensus jobs to a pool instead of consequentially
                 Sequence repSequence = (seqList.size() == 1)?
                         seqList.get(0)
                         :
-                        ErrorCorrection.consensusSequence(seqList,prefix,"poa");
+                        ErrorCorrection.consensusSequence(seqList, 50,prefix,"poa");
                 seqList.clear();
 
                 repSequence.setName(groupID);
@@ -197,6 +200,33 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
 
         public Sequence representative() {
             return repSequence;
+        }
+    }
+
+    static class ConsensusThread implements Runnable {
+
+        static CountDownLatch latch;
+        private String prefix;
+        private ArrayList<Sequence> seqList;
+        protected Sequence consensus = null;
+
+        public ConsensusThread(String prefix, ArrayList<Sequence> seqList){
+            this.prefix = prefix;
+            this.seqList = seqList;
+        }
+
+        @Override
+        public void run() {
+            try {
+                String myThreadName = Thread.currentThread().getName();
+                consensus = ErrorCorrection.consensusSequence(seqList,prefix,"poa");
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }finally{
+                latch.countDown();
+            }
         }
     }
 
