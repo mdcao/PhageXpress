@@ -219,7 +219,7 @@ public class VectorSequenceExtraction {
                 }
 
                 extracted = true;
-                LOG.info("Found insert of length " + (endInsertPosition - startInsertPosition));
+                //LOG.info("Found insert of length " + (endInsertPosition - startInsertPosition));
                 if (endInsertPosition - startInsertPosition > minimum && endInsertPosition - startInsertPosition < minimum + 120) {
                     String readSub = sequenceStr.substring(startInsertPosition, endInsertPosition);
                     Sequence rs = new Sequence(Alphabet.DNA16(), readSub, currentReadName);
