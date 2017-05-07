@@ -77,8 +77,12 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
         //System.out.println(new Date() + " " + actualInsert);
         outputStream.print("##" + new Date() + " " + actualInsert);
         outputStream.println();
-        for (int x = 0; x < groupList.size() && x < 40;x++){
-            groupList.get(x).repSequence.writeFasta(outputStream);
+        for (int x = 0; x < groupList.size();x++){
+            SequenceCluster.ReadGroup group = groupList.get(x);
+            if (group.count > 10)
+                groupList.get(x).repSequence.writeFasta(outputStream);
+            else
+                break;
             //System.out.println(groupList.get(x).count + "\t" + groupList.get(x).getID() + "\t" +  groupList.get(x).repSequence.getName());
 
         }
