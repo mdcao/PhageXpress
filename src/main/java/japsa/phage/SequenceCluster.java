@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 
 
 /**
@@ -23,6 +24,8 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
     static int COUNT = 0;
     static double ratio = 0.9;
     static String prefix = "_" + new Date().getTime();
+    static int total_thread = 8;
+    static ExecutorService executor;
 
     public SequenceCluster(){
         super();
@@ -49,12 +52,14 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
                 seq.writeFasta(sos);
             }
             sos.close();
+            String myThread = (total_thread > 2)?"" + (total_thread -2):"1";
+
             ProcessBuilder pb = new ProcessBuilder("cd-hit-est",
                     "-i", prefix + "_cdhit.fas",
                     "-o", prefix + "_cdhit",
                     "-c", ""+ratio,
                     "-n", "6",
-                    "-T", "2",
+                    "-T", myThread,
                     "-g", "1",
                     "-aL", "0.9",
                     "-aS", "0.9",
@@ -89,7 +94,7 @@ public class SequenceCluster extends HashMap<String, SequenceCluster.ReadGroup> 
                         if (seqList.size() == 1)
                                 repSequence = seqList.get(0);
                         else{
-                            LOG.info("Run concenssus on " + seqList.size() + " sequences");
+                            LOG.info("Run concensus on " + seqList.size() + " sequences");
                             repSequence = ErrorCorrection.consensusSequence(seqList,prefix,"poa");
                         }
                         seqList.clear();
