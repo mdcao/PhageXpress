@@ -79,7 +79,7 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
         outputStream.println();
         for (int x = 0; x < groupList.size();x++){
             SequenceCluster.ReadGroup group = groupList.get(x);
-            if (group.count > 10)
+            if (group.count >= 10)
                 groupList.get(x).repSequence.writeFasta(outputStream);
             else
                 break;
