@@ -86,6 +86,7 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
             //System.out.println(groupList.get(x).count + "\t" + groupList.get(x).getID() + "\t" +  groupList.get(x).repSequence.getName());
 
         }
+        outputStream.flush();
         //reset count
         currentBatch.clear();
 
@@ -102,6 +103,7 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
             LOG.info("Receive final batch of " + currentBatch.size());
             try {
                 addNewBatch();
+                outputStream.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
