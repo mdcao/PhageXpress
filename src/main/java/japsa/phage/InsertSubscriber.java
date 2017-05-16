@@ -47,7 +47,6 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
 
     @Override
     public void onNext(Sequence seq) {
-        //LOG.info(currentThread().getName() + "(" + name + ") Got : " + seq.getName());
         currentBatch.put(seq.getName(), seq);
         actualInsert ++;
         //process here
@@ -75,7 +74,6 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
             }
         });
 
-        //System.out.println(new Date() + " " + actualInsert);
         outputStream.print("##" + new Date() + " " + actualInsert);
         outputStream.println();
         for (int x = 0; x < groupList.size();x++){
@@ -110,8 +108,5 @@ public class InsertSubscriber implements Flow.Subscriber<Sequence> {
             }
         }
         LOG.info(currentThread().getName() + "(" + name + ") Done");
-
     }
-
-
 }

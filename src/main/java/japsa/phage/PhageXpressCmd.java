@@ -70,11 +70,6 @@ public class PhageXpressCmd extends CommandLine {
         int 	thread = cmdLine.getIntVal("thread");
         SequenceCluster.ratio = thresholdOption;
         SequenceCluster.prefix = prefix;
-
-
-        //System.out.println(Logger.ROOT_LOGGER_NAME);
-
-        //boolean pure = cmdLine.getBooleanVal("pure");
         try {
             ExecutorService executor = Executors.newFixedThreadPool(thread);
             SequenceCluster.executor = executor;
